@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>ChainForge — browser mini-GPT</title>
+  <meta name="description" content="Train a tiny transformer on your own text, entirely in this browser. No server, no upload, no account.">
+  <meta name="theme-color" content="#040810">
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./app.css">
+  <link rel="stylesheet" href="./extra.css">
+</head>
+<body>
+  <div class="bg-grid" aria-hidden="true"></div>
+  <div class="bg-glow" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <a class="brand" href="#train" aria-label="ChainForge home">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 40 40" role="img">
+          <defs>
+            <linearGradient id="bm" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#ffe9b0"/>
+              <stop offset=".55" stop-color="#f2c75c"/>
+              <stop offset="1" stop-color="#b07c1d"/>
+            </linearGradient>
+          </defs>
+          <path d="M20 2.8 34.9 11.4v17.2L20 37.2 5.1 28.6V11.4Z" fill="none" stroke="url(#bm)" stroke-width="2"/>
+          <path d="M20 11.2 27 15.2v8L20 27.2 13 23.2v-8Z" fill="none" stroke="url(#bm)" stroke-width="1.6"/>
+          <circle cx="20" cy="19.2" r="2.2" fill="#f2c75c"/>
+        </svg>
+      </span>
+      <span class="brand-text">
+        <strong>CHAINFORGE</strong>
+        <em>browser edition</em>
+      </span>
+    </a>
+
+    <nav class="tabs" role="tablist" aria-label="Workspace">
+      <button class="tab is-active" data-tab="train" id="tab-train" role="tab" aria-selected="true" aria-controls="panel-train">
+        <span class="tab-index">01</span>Train
+      </button>
+      <button class="tab" data-tab="chat" id="tab-chat" role="tab" aria-selected="false" aria-controls="panel-chat">
+        <span class="tab-index">02</span>Chat
+      </button>
+      <button class="tab" data-tab="save" id="tab-save" role="tab" aria-selected="false" aria-controls="panel-save">
+        <span class="tab-index">03</span>Save
+      </button>
+    </nav>
+
+    <div class="top-status" title="Everything runs locally in this tab">
+      <span class="status-dot" id="health-dot"></span>
+      <span id="health-label">loading engine…</span>
+    </div>
+  </header>
+
+  <main class="shell">
+    <!-- ============================================================ TRAIN -->
+    <section class="panel" id="panel-train" role="tabpanel" aria-labelledby="tab-train">
+      <div class="panel-head">
+        <div>
+          <p class="eyebrow">Text → weights → words</p>
+          <h2>Forge a tiny model</h2>
+        </div>
+        <p class="lede">A real decoder-only transformer trains in this tab. Your documents stay in this browser, the loss curve is live, and the finished weights can be downloaded as one portable file. No API key, server, or setup screen.</p>
+      </div>
+
+      <div class="grid two">
+        <article class="card">
+          <header class="card-head">
+            <h3><span class="step-num">01</span>Documents</h3>
+            <span class="pill" id="dataset-badge">seed ready</span>
+          </header>
+          <div class="dropzone" id="drop" tabindex="0" role="button" aria-label="Choose text documents to train on">
+            <svg viewBox="0 0 48 48" aria-hidden="true" class="drop-icon">
+              <path d="M24 31V11m0 0-7 7m7-7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M9 29v6a4 4 0 0 0 4 4h22a4 4 0 0 0 4-4v-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+            </svg>
+            <p><strong>Drop text files</strong> or click to browse</p>
+            <p class="hint">txt · md · csv · json · html · source code</p>
+            <input id="file-input" type="file" multiple hidden accept=".txt,.md,.markdown,.rst,.log,.csv,.tsv,.json,.jsonl,.yaml,.yml,.toml,.ini,.html,.htm,.xml,.css,.js,.mjs,.ts,.jsx,.tsx,.py,.sql,.sh,.rb,.go,.rs,.java,.c,.h,.cpp,.hpp,.ipynb,text/*">
+          </div>
+          <ul class="file-list" id="file-list"></ul>
+          <p class="notice hidden" id="dataset-note"></p>
+          <div class="meta-row">
+            <span id="dataset-meta">Loading bundled corpus…</span>
+            <span class="mono" id="upload-state"></span>
+          </div>
+          <div class="seed-strip">
+            <span class="dot prompt" aria-hidden="true"></span>
+            <span><strong id="seed-meta">Bundled seed corpus</strong> is always included so the chat format survives fine-tuning.</span>
+          </div>
+        </article>
+
+        <article class="card">
+          <header class="card-head">
+            <h3><span class="step-num">02</span>Run configuration</h3>
+          </header>
+
+          <div class="field">
+            <span class="label">Starting point</span>
+            <div class="segmented" role="group" aria-label="Starting point">
+              <button type="button" class="seg is-active" data-mode="finetune">
+                <strong>Warm-start</strong><small>continue a model</small>
+              </button>
+              <button type="button" class="seg" data-mode="fresh">
+                <strong>From scratch</strong><small>new random weights</small>
+              </button>
+            </div>
+          </div>
+
+          <div class="field" id="finetune-field">
+            <label class="label" for="parent-model">Parent model</label>
+            <select id="parent-model" class="input"></select>
+            <p class="hint" id="parent-hint">Keeps the parent tokenizer and chat format.</p>
+          </div>
+
+          <div class="field">
+            <label class="label" for="steps">Additional steps</label>
+            <input class="input" id="steps" type="number" min="5" max="2000" value="80">
+            <div class="chips" id="step-presets">
+              <button type="button" class="chip" data-steps="20">Smoke · 20</button>
+              <button type="button" class="chip is-active" data-steps="80">Standard · 80</button>
+              <button type="button" class="chip" data-steps="240">Deep · 240</button>
+            </div>
+            <p class="hint">A browser model is small and honest. 80 steps is a demo; 240+ is a better first pass.</p>
+          </div>
+
+          <div class="grid two tight">
+            <div class="field">
+              <label class="label" for="batch">Batch size</label>
+              <input class="input" id="batch" type="number" value="4" min="1" max="16">
+            </div>
+            <div class="field">
+              <label class="label" for="lr">Learning rate</label>
+              <input class="input" id="lr" type="number" value="0.003" step="0.0005" min="0.0001" max="0.02">
+            </div>
+          </div>
+
+          <details class="advanced">
+            <summary>Name &amp; architecture</summary>
+            <div class="field">
+              <label class="label" for="model-name">Model name</label>
+              <input class="input" id="model-name" placeholder="auto" maxlength="64">
+            </div>
+            <div class="architecture-row">
+              <span><b id="param-preview">—</b> params</span>
+              <span><b id="context-preview">—</b> char context</span>
+              <span><b id="vocab-preview">—</b> vocab</span>
+            </div>
+            <p class="fineprint">One pre-LN decoder layer, four attention heads, GELU MLP, Adam. Character-level tokens keep arbitrary text portable; it is slower to read than a word tokenizer.</p>
+          </details>
+
+          <div class="actions">
+            <button class="btn gold" id="start-train" type="button">
+              <span>Start training</span><kbd>⏎</kbd>
+            </button>
+            <button class="btn ghost hidden" id="cancel-train" type="button">Cancel run</button>
+          </div>
+        </article>
+      </div>
+
+      <article class="card run-card">
+        <header class="card-head">
+          <h3><span class="step-num">03</span>Run monitor</h3>
+          <div class="run-badges">
+            <span class="pill" id="run-status">idle</span>
+            <span class="pill subtle" id="run-device">—</span>
+          </div>
+        </header>
+
+        <div class="run-stats">
+          <div class="stat"><span class="stat-label">Step</span><strong id="stat-step">0 / 0</strong></div>
+          <div class="stat"><span class="stat-label">Train loss</span><strong id="stat-loss">—</strong></div>
+          <div class="stat"><span class="stat-label">Tokens/s</span><strong id="stat-tps">—</strong></div>
+          <div class="stat"><span class="stat-label">Context</span><strong id="stat-ctx">—</strong></div>
+          <div class="stat"><span class="stat-label">ETA</span><strong id="stat-eta">—</strong></div>
+        </div>
+
+        <div class="progress" aria-hidden="true"><div class="progress-fill" id="train-progress"></div></div>
+        <div class="chart-wrap">
+          <canvas id="loss-canvas" aria-label="Training loss chart"></canvas>
+          <span class="chart-empty" id="chart-empty">loss curve appears here</span>
+        </div>
+        <div class="log" id="train-log" aria-live="polite">
+          <div class="log-line muted">Waiting for a run…</div>
+        </div>
+        <div class="result hidden" id="train-result"></div>
+
+        <div class="base-strip">
+          <div class="base-copy">
+            <strong>Starter model is bundled.</strong>
+            <span id="base-status">Loading the 40,930-parameter seed model…</span>
+          </div>
+          <button class="btn blue small" id="reload-base" type="button">Reload starter</button>
+        </div>
+      </article>
+
+      <p class="fineprint">This is not ChatGPT in a page. A 40k–100k parameter model trained on a small corpus learns vocabulary, formatting, and local style; it will not reliably reason or answer facts it was never trained on. The reasoning draft is a visible scratchpad, not a verified trace of hidden computation.</p>
+    </section>
+
+    <!-- ============================================================= CHAT -->
+    <section class="panel hidden" id="panel-chat" role="tabpanel" aria-labelledby="tab-chat">
+      <div class="panel-head">
+        <div>
+          <p class="eyebrow">Weights → words</p>
+          <h2>Chat with your forge</h2>
+        </div>
+        <p class="lede">Every reply is sampled from weights loaded in this tab. Watch the reasoning draft and the character budget; stop generation whenever you like. Nothing is sent anywhere.</p>
+      </div>
+
+      <div class="chat-layout">
+        <article class="card chat-card">
+          <header class="card-head">
+            <h3>Conversation</h3>
+            <div class="chat-tools">
+              <label class="sr-only" for="chat-model">Model</label>
+              <select id="chat-model" class="input select-compact"></select>
+              <button class="btn ghost small" id="clear-chat" type="button">Clear</button>
+            </div>
+          </header>
+
+          <div class="suggestions" id="suggestions">
+            <button class="chip" type="button" data-prompt="What is ChainForge?">What is ChainForge?</button>
+            <button class="chip" type="button" data-prompt="Does it need a server?">Does it need a server?</button>
+            <button class="chip" type="button" data-prompt="How do I save a model?">How do I save a model?</button>
+          </div>
+
+          <div class="transcript" id="transcript" aria-live="polite">
+            <div class="empty-state" id="chat-empty">
+              <span class="empty-glyph" aria-hidden="true">◇</span>
+              <p><strong>No messages yet.</strong></p>
+              <p class="hint">The bundled starter is rough. Fine-tune it on your notes, then ask about what it learned.</p>
+            </div>
+          </div>
+
+          <form class="composer" id="composer">
+            <label class="sr-only" for="chat-input">Message</label>
+            <textarea id="chat-input" rows="2" maxlength="4000" placeholder="Ask your local model something…"></textarea>
+            <div class="composer-actions">
+              <span class="hint">⌘ / Ctrl + Enter to send</span>
+              <div class="composer-buttons">
+                <button class="btn ghost small hidden" id="stop-chat" type="button">Stop</button>
+                <button class="btn gold" id="send-chat" type="submit">Send</button>
+              </div>
+            </div>
+          </form>
+        </article>
+
+        <aside class="card settings-card">
+          <header class="card-head"><h3>Reasoning &amp; budget</h3></header>
+
+          <label class="switch">
+            <input type="checkbox" id="chat-reasoning" checked>
+            <span class="switch-ui" aria-hidden="true"></span>
+            <span class="switch-copy">
+              <strong>Visible reasoning</strong>
+              <small>Stream a scratchpad before the answer</small>
+            </span>
+          </label>
+
+          <div class="field">
+            <label class="label" for="think-tokens">Reasoning budget <output id="think-value">16</output></label>
+            <input type="range" id="think-tokens" min="0" max="64" step="8" value="16">
+          </div>
+          <div class="field">
+            <label class="label" for="answer-tokens">Answer budget <output id="answer-value">48</output></label>
+            <input type="range" id="answer-tokens" min="16" max="120" step="8" value="48">
+          </div>
+          <div class="field">
+            <label class="label" for="temperature">Temperature <output id="temp-value">0.8</output></label>
+            <input type="range" id="temperature" min="0" max="1.4" step="0.05" value="0.8">
+          </div>
+          <div class="field">
+            <label class="label" for="top-k">Top-k</label>
+            <input class="input" id="top-k" type="number" min="1" max="100" value="30">
+          </div>
+
+          <div class="budget-card">
+            <p class="eyebrow">Context meter</p>
+            <div class="meter" id="budget-meter" aria-hidden="true">
+              <span class="meter-prompt" id="meter-prompt"></span>
+              <span class="meter-think" id="meter-think"></span>
+              <span class="meter-answer" id="meter-answer"></span>
+            </div>
+            <ul class="budget-legend">
+              <li><i class="dot prompt"></i>prompt <b id="budget-prompt">—</b></li>
+              <li><i class="dot think"></i>reasoning <b id="budget-think">—</b></li>
+              <li><i class="dot answer"></i>answer <b id="budget-answer">—</b></li>
+              <li><i class="dot ctx"></i>context <b id="budget-context">—</b></li>
+            </ul>
+            <p class="hint" id="budget-note">Tokens are characters in the browser edition. Budget details appear after the first reply.</p>
+          </div>
+
+          <p class="fineprint">The trace is a draft the model wrote to condition itself. It is not a verified record of hidden computation, and small models often produce shallow or misleading notes.</p>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ============================================================= SAVE -->
+    <section class="panel hidden" id="panel-save" role="tabpanel" aria-labelledby="tab-save">
+      <div class="panel-head">
+        <div>
+          <p class="eyebrow">Archive → rehydrate</p>
+          <h2>Save &amp; load</h2>
+        </div>
+        <p class="lede">The browser edition stores models as a single portable JSON archive. Download one to keep it, then import it later to chat or continue training. The starter is bundled and read-only.</p>
+      </div>
+
+      <div class="grid two save-layout">
+        <article class="card">
+          <header class="card-head">
+            <h3>Model vault</h3>
+            <button class="btn ghost small" id="refresh-models" type="button">Refresh</button>
+          </header>
+          <div class="model-grid" id="model-grid">
+            <p class="hint">Loading models…</p>
+          </div>
+          <p class="fineprint" id="storage-status">Saved models live in this browser's IndexedDB. Clearing site data removes them; download anything you want to keep.</p>
+        </article>
+
+        <aside class="stack">
+          <article class="card">
+            <header class="card-head"><h3>Import a browser archive</h3></header>
+            <div class="dropzone small" id="import-drop" tabindex="0" role="button" aria-label="Import a ChainForge browser model">
+              <p><strong>Drop a .cgpt.json</strong> or click to browse</p>
+              <p class="hint">A local JSON model trained by this browser edition.</p>
+              <input id="import-input" type="file" accept=".json,.cgpt,.cgpt.json,application/json" hidden>
+            </div>
+            <p class="hint" id="import-status" style="margin-top:12px"></p>
+          </article>
+
+          <article class="card note-card">
+            <p class="eyebrow">Why JSON instead of .cgpt?</p>
+            <p>The Python edition uses a ZIP + safetensors archive. This static edition has no Python, so it uses a plain JSON weight archive. Both are portable; they are not interchangeable.</p>
+          </article>
+
+          <article class="card note-card">
+            <p class="eyebrow">No account, no server</p>
+            <p>There is no storage service behind this page. If you clear the browser, the model is gone. Download the archive and keep it wherever you keep important files.</p>
+          </article>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <template id="tpl-model">
+    <article class="model-card">
+      <header class="model-card-head">
+        <h4 class="model-name"></h4>
+        <span class="pill model-mode"></span>
+      </header>
+      <dl class="model-meta">
+        <div><dt>Params</dt><dd class="m-params"></dd></div>
+        <div><dt>Steps</dt><dd class="m-steps"></dd></div>
+        <div><dt>Context</dt><dd class="m-ctx"></dd></div>
+        <div><dt>Loss</dt><dd class="m-loss"></dd></div>
+      </dl>
+      <p class="hint m-lineage"></p>
+      <div class="model-actions">
+        <button class="btn blue small m-use" type="button">Use in chat</button>
+        <button class="btn ghost small m-download" type="button">Download</button>
+        <button class="btn danger small m-delete" type="button">Delete</button>
+      </div>
+    </article>
+  </template>
+
+  <noscript><p class="shell">ChainForge needs JavaScript to train and run the model locally.</p></noscript>
+  <script src="./app.js" defer></script>
+</body>
+</html>

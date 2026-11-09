@@ -1,0 +1,18 @@
+{
+  "name": "chainforge-browser",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Browser-only ChainForge static trainer",
+  "scripts": {
+    "build": "python3 scripts/build_pages.py && esbuild pages/app.js --bundle --format=iife --target=es2020 --minify --outfile=_site/app.js",
+    "test:browser-model": "node scripts/test_browser_model.mjs",
+    "train:base": "node scripts/train_browser_base.mjs"
+  },
+  "dependencies": {
+    "@tensorflow/tfjs": "^4.22.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0"
+  }
+}

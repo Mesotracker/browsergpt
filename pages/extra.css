@@ -1,0 +1,80 @@
+/* Browser edition additions. The base visual system lives in app.css. */
+
+.seed-strip {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 13px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line-soft);
+  font-size: 10.5px;
+  line-height: 1.55;
+  color: #7891b6;
+}
+.seed-strip strong { color: #b8cbea; font-weight: 600; }
+.seed-strip .dot { margin-top: 4px; flex-shrink: 0; }
+
+.architecture-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: 2px 0 10px;
+  font: 500 10px/1.4 var(--mono);
+  color: var(--muted);
+}
+.architecture-row b {
+  color: var(--gold-soft);
+  font-weight: 600;
+}
+
+.suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding: 0 4px 13px;
+}
+.suggestions .chip { font-size: 10px; }
+
+.engine-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 500 10px/1 var(--mono);
+  color: #89a5cc;
+}
+.engine-badge::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--ok);
+  box-shadow: 0 0 8px rgba(69, 217, 154, 0.7);
+}
+
+.model-card.is-base {
+  border-color: rgba(242, 199, 92, 0.22);
+  background: linear-gradient(180deg, rgba(24, 25, 20, 0.55), rgba(7, 17, 32, 0.9));
+}
+.model-card.is-base .model-name { color: var(--gold-soft); }
+.model-card .model-mode.gold { border-color: rgba(242, 199, 92, 0.4); color: #e7cf91; }
+.model-card .m-lineage { min-height: 1.3em; }
+
+.chat-card .suggestions:empty { display: none; }
+.transcript .empty-state .hint { max-width: 390px; margin: 8px auto 0; }
+
+.fineprint code { font-size: 0.95em; }
+.base-strip #base-status { max-width: 560px; }
+
+.import-status-ok { color: #9ceac3; }
+.import-status-bad { color: #ffb5b5; }
+
+@media (max-width: 560px) {
+  .suggestions { gap: 6px; padding-bottom: 11px; }
+  .suggestions .chip { flex: 1 1 30%; padding: 8px 6px; text-align: center; }
+  .seed-strip { font-size: 10px; }
+  .architecture-row { gap: 6px 12px; }
+}
+
+@media (max-width: 380px) {
+  .suggestions .chip { font-size: 9.5px; }
+}

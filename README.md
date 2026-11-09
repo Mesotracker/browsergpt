@@ -16,6 +16,26 @@ documents ──▶ extract ──▶ byte-BPE ──▶ token stream ──▶ 
 
 ---
 
+## Browser edition (GitHub Pages)
+
+**Live static site: <https://mesotracker.github.io/browsergpt/>**
+
+`pages/` is a second edition of ChainForge that needs no Python, Docker, API key, Hugging Face account, or server. TensorFlow.js trains a real decoder-only transformer directly in the page, keeps models in IndexedDB, and samples chat replies on the same tab. The bundled starter is a 40,930-parameter character-level model with a 96-character context, trained on `corpus/base/`.
+
+```bash
+npm ci
+npm run test:browser-model
+npm run build        # assembles _site/ and bundles pages/app.js
+```
+
+The **Train** tab accepts text-like files (`.txt`, `.md`, `.csv`, `.json`, `.html`, code, notebooks), always includes the seed corpus, and supports warm-starting from the starter or a saved model. The **Chat** tab streams a visible reasoning draft and a separate answer with character budgets. The **Save** tab exports a portable `.cgpt.json` browser archive and imports it back. Everything is local to the browser; clearing site data removes saved models.
+
+The GitHub Actions workflow `.github/workflows/pages.yml` runs the Node smoke test, builds `_site/`, enables GitHub Pages through `GITHUB_TOKEN`, and deploys it. No repository secrets are required.
+
+> **Static-edition limits.** It is intentionally small: one decoder layer, 96-character context, and no `.docx`/`.pdf` extraction in the static build. The Python `.cgpt` ZIP format and the browser `.cgpt.json` format are not interchangeable. The starter demonstrates the pipeline and a warm-start, not a general assistant.
+
+---
+
 ## Features
 
 - **Real GPT training.** Pre-LN decoder-only transformer with tied embeddings, causal self-attention, GELU MLPs, AdamW, warmup + cosine decay, gradient clipping and validation loss.
@@ -209,6 +229,10 @@ On pushes and pull requests: installs CPU PyTorch, runs the pytest suite (tokeni
 
 Inputs: `steps`, `preset` (`base`/`wide`), `commit_model`. It trains `models/base.cgpt`, uploads it plus `base-summary.json` as an artifact, and — when `commit_model` is true — commits the archive back to the branch. Run it from **Actions → Train base model → Run workflow**.
 
+### `pages.yml`
+
+On pushes to `main` or manual dispatch: installs the Node static-site dependencies, runs the browser-transformer smoke test, builds `_site/`, and deploys the static edition to GitHub Pages. `actions/configure-pages@v5` runs with `enablement: true`, so the repository's Pages site is configured without a manual settings step. The output is a relative-path site that works at `/browsergpt/`.
+
 ### `deploy.yml`
 
 On pushes to `main` (or a manual **Run workflow**): builds the Docker image and pushes `ghcr.io/<owner>/<repo>:latest` and a short-SHA tag. If `HF_TOKEN` and the `HF_SPACE` repository variable are configured, it also publishes the app to a Hugging Face Space and overwrites the Space README with the required Docker metadata. Without those two values the workflow explicitly reports that web deployment was skipped; the image is still published.
@@ -265,6 +289,7 @@ All `/api` routes except health/config require `X-Chainforge-Token` when `CHAINF
 - Training runs are capped at 20,000 steps from the UI/API.
 - Job history is bounded in memory; datasets and models live on disk and are not deleted automatically.
 - Hosted storage may be ephemeral. Download archives you want to keep.
+- The static browser edition reads text-like files only; `.docx` and `.pdf` extraction is available in the Python edition. Its browser archives are JSON and are separate from the Python `.cgpt` format.
 
 ---
 
@@ -287,9 +312,12 @@ To move toward stronger output:
 ```bash
 python -m pytest -q
 python -m chainforge smoke --steps 8
+
+# Browser transformer: forward pass, loss improvement, sampling, and JSON round-trip
+npm run test:browser-model
 ```
 
-The suite covers unicode/special-token roundtrips, deterministic BPE, docx/text/unknown/binary ingestion, archive fidelity and logits equality after export/import, checksum and traversal rejection, training/cancellation, prompt fitting and budgets, and a full API flow (import → dataset → train → list → download → chat).
+The Python suite covers unicode/special-token roundtrips, deterministic BPE, docx/text/unknown/binary ingestion, archive fidelity and logits equality after export/import, checksum and traversal rejection, training/cancellation, prompt fitting and budgets, and a full API flow (import → dataset → train → list → download → chat). The browser smoke test exercises the shared TensorFlow.js engine in Node.
 
 ---
 
@@ -311,9 +339,11 @@ chainforge/
   cli.py         train/build-base/inspect/chat/smoke/serve
 corpus/base/     seed documents for the starter model
 docs/            architecture and format notes
-web/             index.html, app.css, app.js
+web/             Python edition UI (index.html, app.css, app.js)
+pages/           static browser edition (index.html, app.js, engine.js, base-model.json)
+scripts/         build_pages.py, browser base trainer, browser smoke test
 tests/           pytest suite
-.github/         CI, base-model workflow, container deploy
+.github/         CI, base-model workflow, container deploy, Pages deploy
 ```
 
 ## License

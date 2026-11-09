@@ -1,5 +1,8 @@
 __pycache__/
 *.py[cod]
+node_modules/
+_site/
+artifacts/
 .pytest_cache/
 .venv/
 venv/
