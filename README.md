@@ -87,6 +87,10 @@ The image defaults to port `7860` (Hugging Face Spaces convention); set `PORT=80
 - Bundled models are read-only; user models can be deleted.
 - Optional server access token is stored only in the browser's `localStorage`.
 
+### Mobile
+
+Below 700px the tab bar becomes a fixed bottom navigation with safe-area padding, the conversation is ordered before its settings, and controls use 44px touch targets. Chat and form fields switch to 16px text to avoid iOS focus zoom. The responsive layout is checked at 360×800, 390×844, and 768×1024.
+
 ---
 
 ## Training modes
@@ -207,7 +211,7 @@ Inputs: `steps`, `preset` (`base`/`wide`), `commit_model`. It trains `models/bas
 
 ### `deploy.yml`
 
-On pushes to `main`: builds the Docker image and pushes `ghcr.io/<owner>/<repo>:latest` and a short-SHA tag. If `HF_TOKEN` and the `HF_SPACE` repository variable are configured, it also publishes the app to a Hugging Face Space and overwrites the Space README with the required Docker metadata.
+On pushes to `main` (or a manual **Run workflow**): builds the Docker image and pushes `ghcr.io/<owner>/<repo>:latest` and a short-SHA tag. If `HF_TOKEN` and the `HF_SPACE` repository variable are configured, it also publishes the app to a Hugging Face Space and overwrites the Space README with the required Docker metadata. Without those two values the workflow explicitly reports that web deployment was skipped; the image is still published.
 
 Hugging Face Spaces' free CPU tier is the realistic zero-cost target for this stack (the image is large because of PyTorch, and free container hosts with persistent disks are scarce). Any Docker host works: the app is one process, one port, and a writable data directory. Attach a volume to `/app/data` if you want trained models to survive restarts.
 

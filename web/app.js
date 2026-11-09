@@ -200,7 +200,11 @@
     $$('.panel').forEach((panel) => {
       panel.classList.toggle('hidden', panel.id !== `panel-${name}`);
     });
-    if (updateHash) history.replaceState(null, '', `#${name}`);
+    if (updateHash) {
+      history.replaceState(null, '', `#${name}`);
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
+    }
     if (name === 'save' || name === 'chat') refreshModels();
   }
 

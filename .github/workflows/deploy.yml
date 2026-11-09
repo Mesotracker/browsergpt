@@ -4,6 +4,12 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      deploy_web:
+        description: "Deploy the web app after the image build"
+        required: true
+        default: true
+        type: boolean
 
 concurrency:
   group: chainforge-deploy-${{ github.ref }}
@@ -44,7 +50,24 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Check web deploy configuration
+        id: web
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_SPACE: ${{ vars.HF_SPACE }}
+        run: |
+          if [ "${{ inputs.deploy_web }}" = "false" ]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Web deploy disabled::deploy_web=false; skipping the web deployment."
+          elif [ -n "$HF_TOKEN" ] && [ -n "$HF_SPACE" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=Web deploy skipped::Set the HF_TOKEN secret and HF_SPACE repository variable to publish the web app."
+          fi
+
       - name: Deploy to Hugging Face Spaces
+        if: steps.web.outputs.enabled == 'true'
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           HF_SPACE: ${{ vars.HF_SPACE }}
@@ -53,6 +76,9 @@ jobs:
           python scripts/deploy_space.py
 
       - name: Image summary
+        env:
+          WEB_DEPLOY_ENABLED: ${{ steps.web.outputs.enabled }}
+          HF_SPACE: ${{ vars.HF_SPACE }}
         run: |
           echo "Image pushed to GHCR:" >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
@@ -60,3 +86,10 @@ jobs:
           echo '```' >> "$GITHUB_STEP_SUMMARY"
           echo "Run locally with:" >> "$GITHUB_STEP_SUMMARY"
           echo '`docker run -p 8000:7860 ghcr.io/'"${{ github.repository }}"':latest`' >> "$GITHUB_STEP_SUMMARY"
+          if [ "$WEB_DEPLOY_ENABLED" = "true" ]; then
+            echo "Web app: https://huggingface.co/spaces/$HF_SPACE" >> "$GITHUB_STEP_SUMMARY"
+          elif [ "${{ inputs.deploy_web }}" = "false" ]; then
+            echo "Web deployment skipped by deploy_web=false." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Web deployment skipped: add the HF_TOKEN secret and HF_SPACE repository variable, then rerun this workflow." >> "$GITHUB_STEP_SUMMARY"
+          fi

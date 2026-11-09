@@ -39,9 +39,13 @@ IGNORE = [
     "runs/*",
     "tests/*",
     "docs/*",
+    "build/*",
+    "chainforge.egg-info/*",
     "**/__pycache__/*",
     "**/*.pyc",
     "*.tmp",
+    "*.log",
+    "base-summary.json",
     ".pytest_cache/*",
 ]
 
