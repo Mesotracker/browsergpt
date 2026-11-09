@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+.env
+data/
+*.egg-info/
+build/
+dist/
+models/*.cgpt
+!models/base.cgpt
+base-summary.json
+base-inspect.json
+.DS_Store
